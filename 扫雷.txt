@@ -1,0 +1,223 @@
+#include<stdio.h>
+#include<time.h>
+#include<graphics.h>
+
+#define N 10
+#define M 64
+
+HWND hwnd;//窗口句柄
+int win;//记录翻开个数，判断输赢
+
+void game();//开始游戏
+void drawmap(int map[][N+2],IMAGE*img);//绘制地图
+int play(int map[][N + 2]);//玩游戏
+void swap(int map[][N + 2], int x, int y);
+
+
+int main()
+{
+	while (1)
+	{
+		game();
+		if (MessageBox(hwnd, L"再玩一局", L"退出", MB_RETRYCANCEL) == IDCANCEL)
+		{
+			break;
+		}
+	}
+	return 0;
+}
+
+void game()
+{
+	initgraph(M * N,M*N);//宽度640，高度640，px像素
+
+	int map[N+2][N+2] = { 0 };//扫雷地图，并且周围围上一圈防止数组越界
+
+	int m, n, i, j;
+
+	//把时间设置为随机数种子
+	srand((unsigned)time(NULL));
+
+	//埋地雷
+
+	for (n = 0; n < N;)
+	{
+		i = rand() % N + 1;//生成1-N之间的随机数
+		j = rand() % N + 1;//生成1-N之间的随机数
+		//判断这里是否是空地，如果有雷重新埋雷
+		if (map[i][j] == 0)
+		{
+			map[i][j] = -1;//-1表示地雷
+			n++;
+		}
+
+	}
+
+	//埋数字
+	for (i = 1; i <= N; i++)
+	{
+		for (j = 1; j <= N; j++)
+		{
+			if (map[i][j] != -1)//判断这里不是地雷
+			{
+				for (m = i - 1; m <= i + 1; m++)
+				{
+					for (n = j - 1; n <= j + 1; n++)
+					{
+						if (map[m][n] == -1)
+						{
+							map[i][j]++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	//加载图片
+
+	IMAGE img[12];
+
+	loadimage(&img[0], L"图片/0.jpg", M, M);
+	loadimage(&img[1], L"图片/1.jpg", M, M);
+	loadimage(&img[2], L"图片/2.jpg", M, M);
+	loadimage(&img[3], L"图片/3.jpg", M, M);
+	loadimage(&img[4], L"图片/4.jpg", M, M);
+	loadimage(&img[5], L"图片/5.jpg", M, M);
+	loadimage(&img[6], L"图片/6.jpg", M, M);
+	loadimage(&img[7], L"图片/7.jpg", M, M);
+	loadimage(&img[8], L"图片/8.jpg", M, M);
+
+
+	loadimage(&img[9], L"图片/雷.jpg", M, M);
+	loadimage(&img[10], L"图片/地图.jpg", M, M);
+	loadimage(&img[11], L"图片/红旗.jpg", M, M);
+	
+	
+	hwnd=GetHWnd();//获取窗口句柄
+	win = 0;
+	while (1)
+	{
+		drawmap(map, img);
+		if (play(map)==9)
+		{
+			drawmap(map, img);
+			MessageBox(hwnd, L"炸弹来了", L"BOOM", MB_OK);
+			break;
+		}
+		if (win == N * N - N)
+		{
+			drawmap(map, img);
+			MessageBox(hwnd, L"你赢了", L"Well Played", MB_OK);
+			break;
+		}
+	}
+
+
+}
+
+void drawmap(int map[][N + 2], IMAGE* img)
+{
+	for (int i = 1; i <= N; i++)
+	{
+		for (int j = 1; j <= N; j++)
+		{
+			if (map[i][j] >= 20)
+			{
+				putimage(M * (i - 1), M * (j - 1), &img[11]);//标记
+				continue;
+			}
+			switch (map[i][j])
+			{
+
+			case 9:putimage(M * (i - 1), M * (j - 1), &img[9]); break;//雷
+
+			case 10:putimage(M * (i - 1), M * (j - 1), &img[0]); break;
+			case 11:putimage(M * (i - 1), M * (j - 1), &img[1]); break;
+			case 12:putimage(M * (i - 1), M * (j - 1), &img[2]); break;
+			case 13:putimage(M * (i - 1), M * (j - 1), &img[3]); break;
+			case 14:putimage(M * (i - 1), M * (j - 1), &img[4]); break;
+			case 15:putimage(M * (i - 1), M * (j - 1), &img[5]); break;
+			case 16:putimage(M * (i - 1), M * (j - 1), &img[6]); break;
+			case 17:putimage(M * (i - 1), M * (j - 1), &img[7]); break;
+			case 18:putimage(M * (i - 1), M * (j - 1), &img[8]); break;
+			
+
+			default:
+				putimage(M * (i - 1), M * (j - 1), &img[10]);//地图的格子
+			}
+		}
+	}
+}
+
+int play(int map[][N + 2])
+{
+	MOUSEMSG msg;//获取鼠标位置
+	while (1)
+	{
+		msg = GetMouseMsg();
+		switch (msg.uMsg)
+		{
+		case WM_LBUTTONDOWN:
+			if (map[msg.x / M + 1][msg.y / M + 1] > 9)
+			{
+				continue;
+			}
+			if (map[msg.x / M + 1][msg.y / M + 1] == 0)
+			{
+				swap(map, msg.x / M + 1, msg.y / M + 1);
+			}
+			else
+			{
+				map[msg.x / M + 1][msg.y / M + 1] += 10;
+				win++;
+			}
+			return map[msg.x / M + 1][msg.y / M + 1];
+			break;
+		case WM_RBUTTONDOWN:
+			if (map[msg.x / M + 1][msg.y / M + 1] < 9)
+			{
+				map[msg.x / M + 1][msg.y / M + 1] += 30;
+			}
+			else if (map[msg.x / M + 1][msg.y / M + 1] >= 20)
+			{
+				map[msg.x / M + 1][msg.y / M + 1] -= 30;
+			}
+			else
+			{
+				continue;
+			}
+			return 0;
+			break;
+		}
+	}
+	return 0;
+}
+
+void swap(int map[][N + 2], int x, int y)
+{
+	map[x][y] = 10;//点到0，先翻开点击的位置
+	win++;
+	int i, j;
+	for (i = x - 1; i <= x + 1; i++)
+	{
+		for (j = y - 1; j <= y + 1; j++)
+		{
+			if (i >= 1 && i <= N && j >= 1 && j <= N)
+			{
+				if (map[i][j] < 9)//没有翻开
+				{
+					if (map[i][j] == 0)
+					{
+						swap(map, i, j);
+					}
+					else//直接翻开
+					{
+						map[i][j] += 10;
+						win++;
+					}
+				}
+			}
+		}
+	}
+}
